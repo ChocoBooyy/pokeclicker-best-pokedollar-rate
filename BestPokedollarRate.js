@@ -2,7 +2,7 @@
 // @name          [Pokeclicker] Best Pokédollar Target
 // @namespace     Pokeclicker Scripts
 // @description   Determines the best Pokédollar/sec farming target using observed income.
-// @version       2.0.0
+// @version       2.1.0
 // @author        ChocoBoy
 // ==/UserScript==
 
@@ -13,6 +13,8 @@
     const SAMPLE_WINDOW = 30;
     const RATE_WINDOW_SECONDS = 10;
     const MONEY_ICON = 'assets/images/currency/money.svg';
+
+    let sortDescending = true;
 
     function loadSamples() {
         try {
@@ -86,6 +88,7 @@
         toggleBtn.onclick = () => {
             tableWrapper.style.display =
                 tableWrapper.style.display === 'none' ? 'block' : 'none';
+            if (tableWrapper.style.display !== 'none') renderTable();
         };
 
         resetBtn.onclick = () => {
@@ -155,29 +158,50 @@
         }
 
         function renderTable() {
+            const rows = [];
+
+            for (const [key, samples] of moneySamples.entries()) {
+                const v = average(samples);
+                if (v != null) {
+                    rows.push({ key, value: v });
+                }
+            }
+
+            rows.sort((a, b) =>
+                sortDescending ? b.value - a.value : a.value - b.value
+            );
+
+            const arrow = sortDescending ? '▼' : '▲';
+
             let html = `
                 <table class="table table-sm table-striped table-bordered mb-0">
                     <thead class="thead-light">
                         <tr>
                             <th>Target</th>
-                            <th class="text-right">Rate</th>
+                            <th class="text-right" style="cursor:pointer" id="bpdt-sort">
+                                Rate ${arrow}
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
             `;
-            for (const [key, samples] of moneySamples.entries()) {
-                const v = average(samples);
-                if (v != null) {
-                    html += `
-                        <tr>
-                            <td>${label(key)}</td>
-                            <td class="text-right">${iconValue(v)}</td>
-                        </tr>
-                    `;
-                }
+
+            for (const row of rows) {
+                html += `
+                    <tr>
+                        <td>${label(row.key)}</td>
+                        <td class="text-right">${iconValue(row.value)}</td>
+                    </tr>
+                `;
             }
+
             html += '</tbody></table>';
             tableWrapper.innerHTML = html;
+
+            tableWrapper.querySelector('#bpdt-sort').onclick = () => {
+                sortDescending = !sortDescending;
+                renderTable();
+            };
         }
 
         function update() {
